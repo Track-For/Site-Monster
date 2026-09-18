@@ -27,6 +27,14 @@ export function ImpactHero({ videoSrc }: { videoSrc?: string }) {
       return;
     }
 
+    // Hide the phrases/final title synchronously (before first paint) so the
+    // static copy never flashes on screen while the video is still loading —
+    // the scroll timeline below reveals them again once it's ready.
+    const phrases = gsap.utils.toArray<HTMLElement>(".hero-cinema__phrase", element);
+    const finalScene = element.querySelector<HTMLElement>(".hero-cinema__final");
+    gsap.set(phrases, { autoAlpha: 0, y: 26 });
+    gsap.set(finalScene, { autoAlpha: 0, y: 34 });
+
     let filmContext: ReturnType<typeof gsap.context> | undefined;
 
     const setupFilm = () => {
@@ -36,12 +44,7 @@ export function ImpactHero({ videoSrc }: { videoSrc?: string }) {
       element.classList.add("hero--cinematic");
 
       filmContext = gsap.context(() => {
-        const phrases = gsap.utils.toArray<HTMLElement>(".hero-cinema__phrase");
-        const finalScene = element.querySelector<HTMLElement>(".hero-cinema__final");
         const cue = element.querySelector<HTMLElement>(".hero-bottom");
-
-        gsap.set(phrases, { autoAlpha: 0, y: 26 });
-        gsap.set(finalScene, { autoAlpha: 0, y: 34 });
 
         // Fast source clip: give the scrub plenty of scroll room so a fluid,
         // eased scrollbar movement still lands cleanly on every fast cut.
@@ -79,6 +82,8 @@ export function ImpactHero({ videoSrc }: { videoSrc?: string }) {
     return () => {
       film.removeEventListener("loadedmetadata", setupFilm);
       filmContext?.revert();
+      gsap.set(phrases, { clearProps: "all" });
+      gsap.set(finalScene, { clearProps: "all" });
       element.classList.remove("hero--cinematic");
       element.style.removeProperty("--hero-scroll-distance");
     };
