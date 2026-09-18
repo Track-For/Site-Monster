@@ -169,7 +169,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 /* Hero cinema: the ad film scrubs with scroll while impact phrases crossfade over each scene */
 .hero-cinema { position: relative; }
-.hero--cinematic .hero-cinema { height: calc(100dvh + var(--hero-scroll-distance, 0px)); }
+.hero--cinematic .hero-cinema { height: calc(100dvh + max(3000px, 450dvh)); }
 .hero-cinema__stage {
   position: relative;
   z-index: 1;

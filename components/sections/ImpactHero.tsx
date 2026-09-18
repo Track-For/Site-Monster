@@ -36,9 +36,24 @@ export function ImpactHero({ videoSrc }: { videoSrc?: string }) {
     gsap.set(finalScene, { autoAlpha: 0, y: 34 });
 
     let filmContext: ReturnType<typeof gsap.context> | undefined;
-    let frameRequest: number | undefined;
+    let seekRequest: number | undefined;
     const playhead = { time: 0 };
     let targetTime = 0;
+
+    const seekToTarget = () => {
+      seekRequest = undefined;
+      if (film.seeking || film.readyState < HTMLMediaElement.HAVE_METADATA) return;
+      if (Math.abs(film.currentTime - targetTime) < 1 / 48) return;
+      film.currentTime = targetTime;
+    };
+
+    const scheduleSeek = () => {
+      if (seekRequest === undefined) {
+        seekRequest = window.requestAnimationFrame(seekToTarget);
+      }
+    };
+
+    film.addEventListener("seeked", scheduleSeek);
 
     const setupFilm = () => {
       if (filmContext || !Number.isFinite(film.duration) || film.duration <= 0) return;
@@ -46,30 +61,15 @@ export function ImpactHero({ videoSrc }: { videoSrc?: string }) {
       film.currentTime = 0;
       element.classList.add("hero--cinematic");
 
-      const smoothVideoFrame = () => {
-        const difference = targetTime - film.currentTime;
-        if (Math.abs(difference) > 0.004 && film.readyState >= HTMLMediaElement.HAVE_METADATA) {
-          film.currentTime += difference * 0.28;
-        }
-        frameRequest = window.requestAnimationFrame(smoothVideoFrame);
-      };
-      frameRequest = window.requestAnimationFrame(smoothVideoFrame);
-
       filmContext = gsap.context(() => {
         const cue = element.querySelector<HTMLElement>(".hero-bottom");
-
-        // Fast source clip: give the scrub plenty of scroll room so a fluid,
-        // eased scrollbar movement still lands cleanly on every fast cut.
-        const scrollExtra = Math.max(6200, Math.round(window.innerHeight * 8));
-        const videoScrollExtra = Math.round(scrollExtra * 0.82);
-        element.style.setProperty("--hero-scroll-distance", `${scrollExtra}px`);
 
         const timeline = gsap.timeline({
           scrollTrigger: {
             trigger: cinema,
             start: "top top",
-            end: () => `+=${videoScrollExtra}`,
-            scrub: 0.95,
+            end: () => `+=${Math.round((cinema.offsetHeight - stage.offsetHeight) * 0.82)}`,
+            scrub: 0.45,
             invalidateOnRefresh: true,
           },
         });
@@ -78,7 +78,10 @@ export function ImpactHero({ videoSrc }: { videoSrc?: string }) {
           time: () => Math.max(0, film.duration - 0.04),
           duration: 1,
           ease: "none",
-          onUpdate: () => { targetTime = playhead.time; },
+          onUpdate: () => {
+            targetTime = playhead.time;
+            scheduleSeek();
+          },
         }, 0);
         if (cue) timeline.to(cue, { autoAlpha: 0, duration: 0.03, ease: "power1.in" }, 0.02);
 
@@ -98,12 +101,12 @@ export function ImpactHero({ videoSrc }: { videoSrc?: string }) {
 
     return () => {
       film.removeEventListener("loadedmetadata", setupFilm);
-      if (frameRequest !== undefined) window.cancelAnimationFrame(frameRequest);
+      film.removeEventListener("seeked", scheduleSeek);
+      if (seekRequest !== undefined) window.cancelAnimationFrame(seekRequest);
       filmContext?.revert();
       gsap.set(phrases, { clearProps: "all" });
       gsap.set(finalScene, { clearProps: "all" });
       element.classList.remove("hero--cinematic");
-      element.style.removeProperty("--hero-scroll-distance");
     };
   }, [videoSrc]);
 
