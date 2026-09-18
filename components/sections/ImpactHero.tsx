@@ -36,6 +36,9 @@ export function ImpactHero({ videoSrc }: { videoSrc?: string }) {
     gsap.set(finalScene, { autoAlpha: 0, y: 34 });
 
     let filmContext: ReturnType<typeof gsap.context> | undefined;
+    let frameRequest: number | undefined;
+    const playhead = { time: 0 };
+    let targetTime = 0;
 
     const setupFilm = () => {
       if (filmContext || !Number.isFinite(film.duration) || film.duration <= 0) return;
@@ -43,12 +46,21 @@ export function ImpactHero({ videoSrc }: { videoSrc?: string }) {
       film.currentTime = 0;
       element.classList.add("hero--cinematic");
 
+      const smoothVideoFrame = () => {
+        const difference = targetTime - film.currentTime;
+        if (Math.abs(difference) > 0.004 && film.readyState >= HTMLMediaElement.HAVE_METADATA) {
+          film.currentTime += difference * 0.28;
+        }
+        frameRequest = window.requestAnimationFrame(smoothVideoFrame);
+      };
+      frameRequest = window.requestAnimationFrame(smoothVideoFrame);
+
       filmContext = gsap.context(() => {
         const cue = element.querySelector<HTMLElement>(".hero-bottom");
 
         // Fast source clip: give the scrub plenty of scroll room so a fluid,
         // eased scrollbar movement still lands cleanly on every fast cut.
-        const scrollExtra = Math.max(4400, Math.round(window.innerHeight * 6.5));
+        const scrollExtra = Math.max(6200, Math.round(window.innerHeight * 8));
         const videoScrollExtra = Math.round(scrollExtra * 0.82);
         element.style.setProperty("--hero-scroll-distance", `${scrollExtra}px`);
 
@@ -57,12 +69,17 @@ export function ImpactHero({ videoSrc }: { videoSrc?: string }) {
             trigger: cinema,
             start: "top top",
             end: () => `+=${videoScrollExtra}`,
-            scrub: 0.6,
+            scrub: 0.95,
             invalidateOnRefresh: true,
           },
         });
 
-        timeline.to(film, { currentTime: () => Math.max(0, film.duration - 0.04), duration: 1, ease: "none" }, 0);
+        timeline.to(playhead, {
+          time: () => Math.max(0, film.duration - 0.04),
+          duration: 1,
+          ease: "none",
+          onUpdate: () => { targetTime = playhead.time; },
+        }, 0);
         if (cue) timeline.to(cue, { autoAlpha: 0, duration: 0.03, ease: "power1.in" }, 0.02);
 
         phrases.forEach((phrase, index) => {
@@ -81,6 +98,7 @@ export function ImpactHero({ videoSrc }: { videoSrc?: string }) {
 
     return () => {
       film.removeEventListener("loadedmetadata", setupFilm);
+      if (frameRequest !== undefined) window.cancelAnimationFrame(frameRequest);
       filmContext?.revert();
       gsap.set(phrases, { clearProps: "all" });
       gsap.set(finalScene, { clearProps: "all" });

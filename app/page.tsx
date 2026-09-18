@@ -8,9 +8,11 @@ import { FlavorStory } from "@/components/sections/FlavorStory";
 import { FinalImpact } from "@/components/sections/FinalImpact";
 
 export default function Home() {
-  const heroVideoSrc = existsSync(join(process.cwd(), "public", "media", "hero-impact.mp4"))
-    ? "/media/hero-impact.mp4"
-    : undefined;
+  const heroVideoSrc = existsSync(join(process.cwd(), "public", "media", "Monster AD.mp4"))
+    ? "/media/Monster%20AD.mp4"
+    : existsSync(join(process.cwd(), "public", "media", "hero-impact.mp4"))
+      ? "/media/hero-impact.mp4"
+      : undefined;
   const lineupVideoSrc = existsSync(join(process.cwd(), "public", "media", "lineup-impact.mp4"))
     ? "/media/lineup-impact.mp4"
     : undefined;
