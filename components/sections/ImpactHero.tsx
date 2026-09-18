@@ -54,7 +54,7 @@ export function ImpactHero({ videoSrc }: { videoSrc?: string }) {
             trigger: cinema,
             start: "top top",
             end: () => `+=${videoScrollExtra}`,
-            scrub: 0.25,
+            scrub: 0.6,
             invalidateOnRefresh: true,
           },
         });
