@@ -47,6 +47,25 @@ export function FlavorLineup({ videoSrc }: { videoSrc?: string }) {
 
     let filmContext: ReturnType<typeof gsap.context> | undefined;
     let stageObserver: ResizeObserver | undefined;
+    let seekRequest: number | undefined;
+    const playhead = { time: 0 };
+    let targetTime = 0;
+
+    const seekToTarget = () => {
+      seekRequest = undefined;
+      if (film.seeking || film.readyState < HTMLMediaElement.HAVE_METADATA) return;
+      if (Math.abs(film.currentTime - targetTime) < 1 / 48) return;
+      film.currentTime = targetTime;
+    };
+
+    const scheduleSeek = () => {
+      if (seekRequest === undefined) {
+        seekRequest = window.requestAnimationFrame(seekToTarget);
+      }
+    };
+
+    film.addEventListener("seeked", scheduleSeek);
+
     const syncStageHeight = () => {
       element.style.setProperty("--lineup-film-height", `${stage.offsetHeight}px`);
     };
@@ -79,7 +98,15 @@ export function FlavorLineup({ videoSrc }: { videoSrc?: string }) {
         });
 
         timeline
-          .to(film, { currentTime: Math.max(0, film.duration - 0.05), duration: 1, ease: "none" }, 0)
+          .to(playhead, {
+            time: Math.max(0, film.duration - 0.05),
+            duration: 1,
+            ease: "none",
+            onUpdate: () => {
+              targetTime = playhead.time;
+              scheduleSeek();
+            },
+          }, 0)
           .to(phrases[0], { autoAlpha: 1, y: 0, duration: 0.055, ease: "power2.out" }, 0.025)
           .to(phrases[0], { autoAlpha: 0, y: -20, duration: 0.05, ease: "power2.in" }, 0.26)
           .to(phrases[1], { autoAlpha: 1, y: 0, duration: 0.055, ease: "power2.out" }, 0.345)
@@ -94,6 +121,8 @@ export function FlavorLineup({ videoSrc }: { videoSrc?: string }) {
 
     return () => {
       film.removeEventListener("loadedmetadata", setupFilm);
+      film.removeEventListener("seeked", scheduleSeek);
+      if (seekRequest !== undefined) window.cancelAnimationFrame(seekRequest);
       stageObserver?.disconnect();
       filmContext?.revert();
       element.classList.remove("lineup--cinematic");
